@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
-import { FileText, Plus, Search, QrCode, X, Download, Printer } from 'lucide-react'
+import { FileText, Plus, Search, QrCode, X, Download, Printer, RefreshCw } from 'lucide-react'
 import Badge from '@/components/ui/Badge'
 
 interface Permit {
@@ -16,6 +16,7 @@ interface Permit {
   vehicle: { plateNumber: string; brand: string; model: string }
 }
 interface Vehicle { id: string; plateNumber: string; brand: string; model: string }
+interface Beneficiary { id: string; name: string; phone?: string }
 
 const permitTypes = [
   { value: 'DAILY', label: 'يومي' },
@@ -30,16 +31,20 @@ export default function PermitsPage() {
   const { token } = useAuth()
   const [permits, setPermits] = useState<Permit[]>([])
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
+  const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([])
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [showQR, setShowQR] = useState<{ permit: Permit; qr: string } | null>(null)
+  const [showRenew, setShowRenew] = useState<Permit | null>(null)
   const [loadingQR, setLoadingQR] = useState<string | null>(null)
-  const [form, setForm] = useState({ vehicleId: '', type: 'MONTHLY', startDate: '', endDate: '', price: '' })
+  const [form, setForm] = useState({ vehicleId: '', beneficiaryId: '', type: 'MONTHLY', startDate: '', endDate: '', price: '' })
+  const [renewForm, setRenewForm] = useState({ startDate: '', endDate: '', price: '' })
   const [loading, setLoading] = useState(false)
 
   const fetch_ = () => {
-    fetch('/api/permits', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(setPermits)
-    fetch('/api/vehicles', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(setVehicles)
+    fetch('/api/permits', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(d => { if (Array.isArray(d)) setPermits(d) })
+    fetch('/api/vehicles', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(d => { if (Array.isArray(d)) setVehicles(d) })
+    fetch('/api/beneficiaries', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(d => { if (Array.isArray(d)) setBeneficiaries(d) })
   }
   useEffect(() => { fetch_() }, [token])
 
@@ -55,7 +60,18 @@ export default function PermitsPage() {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ ...form, price: parseFloat(form.price) }),
     })
-    if (res.ok) { setShowForm(false); fetch_() }
+    if (res.ok) { setShowForm(false); setForm({ vehicleId: '', beneficiaryId: '', type: 'MONTHLY', startDate: '', endDate: '', price: '' }); fetch_() }
+    setLoading(false)
+  }
+
+  const handleRenew = async (e: React.FormEvent) => {
+    e.preventDefault(); setLoading(true)
+    const res = await fetch('/api/permits/renew', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ permitId: showRenew?.id, ...renewForm, price: parseFloat(renewForm.price) }),
+    })
+    if (res.ok) { setShowRenew(null); setRenewForm({ startDate: '', endDate: '', price: '' }); fetch_() }
     setLoading(false)
   }
 
@@ -86,6 +102,7 @@ export default function PermitsPage() {
         .value{font-size:14px;font-weight:bold;color:#1e293b}
         .badge{background:#dcfce7;color:#166534;padding:3px 10px;border-radius:20px;font-size:12px;display:inline-block}
         .footer{text-align:center;margin-top:16px;font-size:11px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:12px}
+        .credit{text-align:center;margin-top:8px;font-size:10px;color:#cbd5e1}
       </style></head><body>
       <div class="card">
         <div class="header">
@@ -105,6 +122,7 @@ export default function PermitsPage() {
           <div class="item"><div class="label">السعر</div><div class="value">${showQR.permit.price} ر.س</div></div>
         </div>
         <div class="footer">رقم التصريح: ${showQR.permit.permitNumber?.slice(0, 20)}...</div>
+        <div class="credit">تم التطوير بواسطة صادق الخاطر — فكرتي للاستشارات</div>
       </div>
       <script>window.onload=()=>{window.print()}</script>
       </body></html>
@@ -159,14 +177,14 @@ export default function PermitsPage() {
               </div>
               <div className="flex gap-2">
                 <button onClick={handlePrint}
-                  className="flex-1 flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-xl text-sm font-medium transition-colors">
+                  className="flex-1 flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-xl text-sm font-medium">
                   <Printer className="w-4 h-4" /> طباعة
                 </button>
                 <button onClick={() => { const a = document.createElement('a'); a.href = showQR.qr; a.download = `permit-${showQR.permit.vehicle?.plateNumber}.png`; a.click() }}
-                  className="flex-1 flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-sm font-medium transition-colors">
+                  className="flex-1 flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-sm font-medium">
                   <Download className="w-4 h-4" /> تنزيل
                 </button>
-                <button onClick={() => setShowQR(null)} className="p-2.5 border border-gray-200 hover:bg-gray-50 rounded-xl transition-colors">
+                <button onClick={() => setShowQR(null)} className="p-2.5 border border-gray-200 hover:bg-gray-50 rounded-xl">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -175,18 +193,69 @@ export default function PermitsPage() {
         </div>
       )}
 
-      {/* Form Modal */}
-      {showForm && (
+      {/* Renew Modal */}
+      {showRenew && (
         <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
           <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md p-6">
+            <h2 className="text-lg font-bold mb-1">تجديد التصريح</h2>
+            <p className="text-sm text-gray-500 mb-4">مركبة: <span className="font-medium text-blue-600">{showRenew.vehicle?.plateNumber}</span></p>
+            <form onSubmit={handleRenew} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">تاريخ البدء الجديد</label>
+                  <input type="date" value={renewForm.startDate} onChange={e => setRenewForm({...renewForm, startDate: e.target.value})}
+                    className="w-full border border-gray-300 rounded-xl px-3 py-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500" required />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">تاريخ الانتهاء الجديد</label>
+                  <input type="date" value={renewForm.endDate} onChange={e => setRenewForm({...renewForm, endDate: e.target.value})}
+                    className="w-full border border-gray-300 rounded-xl px-3 py-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500" required />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">السعر (ريال)</label>
+                <input type="number" value={renewForm.price} onChange={e => setRenewForm({...renewForm, price: e.target.value})}
+                  placeholder={String(showRenew.price)}
+                  className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500" required />
+              </div>
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700">
+                ⚠️ سيتم إلغاء التصريح الحالي وإصدار تصريح جديد تلقائياً
+              </div>
+              <div className="flex gap-3">
+                <button type="submit" disabled={loading}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl text-sm font-medium disabled:opacity-60">
+                  {loading ? 'جارٍ التجديد...' : 'تجديد التصريح'}
+                </button>
+                <button type="button" onClick={() => setShowRenew(null)}
+                  className="flex-1 border border-gray-300 hover:bg-gray-50 py-3 rounded-xl text-sm font-medium">
+                  إلغاء
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Issue Form Modal */}
+      {showForm && (
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md p-6 max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-bold mb-4">إصدار تصريح جديد</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">المركبة</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">المستفيد</label>
+                <select value={form.beneficiaryId} onChange={e => setForm({...form, beneficiaryId: e.target.value})}
+                  className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">اختر المستفيد (اختياري)</option>
+                  {beneficiaries.map(b => <option key={b.id} value={b.id}>{b.name} {b.phone ? `- ${b.phone}` : ''}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">المركبة <span className="text-red-500">*</span></label>
                 <select value={form.vehicleId} onChange={e => setForm({...form, vehicleId: e.target.value})}
                   className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500" required>
                   <option value="">اختر المركبة</option>
-                  {vehicles.map(v => <option key={v.id} value={v.id}>{v.plateNumber} - {v.brand}</option>)}
+                  {vehicles.map(v => <option key={v.id} value={v.id}>{v.plateNumber} - {v.brand} {v.model}</option>)}
                 </select>
               </div>
               <div>
@@ -233,7 +302,7 @@ export default function PermitsPage() {
         <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         <input value={search} onChange={e => setSearch(e.target.value)}
           className="w-full border border-gray-300 rounded-xl pr-10 pl-4 py-2.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="بحث باسم المستخدم أو رقم اللوحة..." />
+          placeholder="بحث باسم المستفيد أو رقم اللوحة..." />
       </div>
 
       {/* Mobile cards */}
@@ -252,16 +321,21 @@ export default function PermitsPage() {
               </div>
               <Badge status={p.status} />
             </div>
-            <div className="grid grid-cols-3 gap-2 text-xs text-gray-500 mb-3">
-              <div><span className="block text-gray-400">النوع</span><Badge status={p.type} /></div>
-              <div><span className="block text-gray-400">السعر</span><span className="font-medium text-gray-900">{p.price} ر.س</span></div>
-              <div><span className="block text-gray-400">الانتهاء</span><span className="font-medium text-gray-900">{new Date(p.endDate).toLocaleDateString('ar-SA')}</span></div>
+            <div className="grid grid-cols-3 gap-2 text-xs mb-3">
+              <div><p className="text-gray-400">النوع</p><Badge status={p.type} /></div>
+              <div><p className="text-gray-400">السعر</p><p className="font-medium text-gray-900">{p.price} ر.س</p></div>
+              <div><p className="text-gray-400">الانتهاء</p><p className="font-medium text-gray-900 text-xs">{new Date(p.endDate).toLocaleDateString('ar-SA')}</p></div>
             </div>
-            <button onClick={() => handleShowQR(p)} disabled={loadingQR === p.id}
-              className="w-full flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-xl text-sm font-medium transition-colors disabled:opacity-50">
-              <QrCode className="w-4 h-4" />
-              {loadingQR === p.id ? 'جارٍ التحميل...' : 'عرض QR Code والطباعة'}
-            </button>
+            <div className="flex gap-2">
+              <button onClick={() => handleShowQR(p)} disabled={loadingQR === p.id}
+                className="flex-1 flex items-center justify-center gap-1.5 bg-slate-900 text-white py-2 rounded-xl text-xs font-medium disabled:opacity-50">
+                <QrCode className="w-3.5 h-3.5" /> QR
+              </button>
+              <button onClick={() => { setShowRenew(p); setRenewForm({ startDate: '', endDate: '', price: String(p.price) }) }}
+                className="flex-1 flex items-center justify-center gap-1.5 bg-green-600 text-white py-2 rounded-xl text-xs font-medium">
+                <RefreshCw className="w-3.5 h-3.5" /> تجديد
+              </button>
+            </div>
           </div>
         ))}
       </div>
@@ -271,13 +345,13 @@ export default function PermitsPage() {
         <table className="w-full">
           <thead className="bg-gray-50 text-xs text-gray-500">
             <tr>
-              <th className="text-right px-6 py-3">المركبة</th>
-              <th className="text-right px-6 py-3">المالك</th>
-              <th className="text-right px-6 py-3">النوع</th>
-              <th className="text-right px-6 py-3">الانتهاء</th>
-              <th className="text-right px-6 py-3">السعر</th>
-              <th className="text-right px-6 py-3">الحالة</th>
-              <th className="text-right px-6 py-3">QR</th>
+              <th className="text-right px-5 py-3">المركبة</th>
+              <th className="text-right px-5 py-3">المستفيد</th>
+              <th className="text-right px-5 py-3">النوع</th>
+              <th className="text-right px-5 py-3">الانتهاء</th>
+              <th className="text-right px-5 py-3">السعر</th>
+              <th className="text-right px-5 py-3">الحالة</th>
+              <th className="text-right px-5 py-3">الإجراءات</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -288,18 +362,23 @@ export default function PermitsPage() {
               </td></tr>
             ) : filtered.map(p => (
               <tr key={p.id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-6 py-4 text-sm font-bold text-blue-600">{p.vehicle?.plateNumber}</td>
-                <td className="px-6 py-4 text-sm text-gray-700">{p.user?.name}</td>
-                <td className="px-6 py-4"><Badge status={p.type} /></td>
-                <td className="px-6 py-4 text-sm text-gray-600">{new Date(p.endDate).toLocaleDateString('ar-SA')}</td>
-                <td className="px-6 py-4 text-sm font-medium">{p.price} ر.س</td>
-                <td className="px-6 py-4"><Badge status={p.status} /></td>
-                <td className="px-6 py-4">
-                  <button onClick={() => handleShowQR(p)} disabled={loadingQR === p.id}
-                    className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-50">
-                    <QrCode className="w-3.5 h-3.5" />
-                    {loadingQR === p.id ? '...' : 'QR'}
-                  </button>
+                <td className="px-5 py-4 text-sm font-bold text-blue-600">{p.vehicle?.plateNumber}</td>
+                <td className="px-5 py-4 text-sm text-gray-700">{p.user?.name}</td>
+                <td className="px-5 py-4"><Badge status={p.type} /></td>
+                <td className="px-5 py-4 text-sm text-gray-600">{new Date(p.endDate).toLocaleDateString('ar-SA')}</td>
+                <td className="px-5 py-4 text-sm font-medium">{p.price} ر.س</td>
+                <td className="px-5 py-4"><Badge status={p.status} /></td>
+                <td className="px-5 py-4">
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => handleShowQR(p)} disabled={loadingQR === p.id}
+                      className="flex items-center gap-1 bg-slate-900 hover:bg-slate-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium disabled:opacity-50">
+                      <QrCode className="w-3.5 h-3.5" /> QR
+                    </button>
+                    <button onClick={() => { setShowRenew(p); setRenewForm({ startDate: '', endDate: '', price: String(p.price) }) }}
+                      className="flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium">
+                      <RefreshCw className="w-3.5 h-3.5" /> تجديد
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

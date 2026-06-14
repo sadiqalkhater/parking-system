@@ -5,11 +5,12 @@ import { usePathname } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import {
   LayoutDashboard, Car, FileText, CalendarClock,
-  ParkingSquare, Users, BarChart3, LogOut, Shield, Menu, X
+  ParkingSquare, Users, BarChart3, LogOut, Shield, Menu, X, UserCheck
 } from 'lucide-react'
 
 const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'لوحة التحكم', roles: ['ADMIN', 'MANAGER', 'USER'] },
+  { href: '/dashboard/beneficiaries', icon: UserCheck, label: 'المستفيدون', roles: ['ADMIN', 'MANAGER', 'USER'] },
   { href: '/dashboard/vehicles', icon: Car, label: 'المركبات', roles: ['ADMIN', 'MANAGER', 'USER'] },
   { href: '/dashboard/permits', icon: FileText, label: 'التصاريح', roles: ['ADMIN', 'MANAGER', 'USER'] },
   { href: '/dashboard/reservations', icon: CalendarClock, label: 'الحجوزات', roles: ['ADMIN', 'MANAGER', 'USER'] },
@@ -67,18 +68,10 @@ export default function Sidebar() {
           <LogOut className="w-4 h-4" />
           تسجيل الخروج
         </button>
-
-        {/* Credit */}
         <div className="mt-4 pt-3 border-t border-slate-700 text-center">
-          <p className="text-slate-500 text-xs leading-relaxed">
-            تم التطوير بواسطة
-          </p>
-          <p className="text-slate-300 text-xs font-medium mt-0.5">
-            صادق الخاطر
-          </p>
-          <p className="text-blue-400 text-xs">
-            فكرتي للاستشارات
-          </p>
+          <p className="text-slate-500 text-xs">تم التطوير بواسطة</p>
+          <p className="text-slate-300 text-xs font-medium mt-0.5">صادق الخاطر</p>
+          <p className="text-blue-400 text-xs">فكرتي للاستشارات</p>
         </div>
       </div>
     </>
@@ -86,7 +79,6 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Mobile top bar */}
       <div className="md:hidden fixed top-0 right-0 left-0 z-40 bg-slate-900 text-white flex items-center justify-between px-4 py-3 shadow-lg">
         <div className="flex items-center gap-2">
           <div className="bg-blue-500 p-1.5 rounded-lg">
@@ -99,13 +91,9 @@ export default function Sidebar() {
         </button>
       </div>
 
-      {open && (
-        <div className="md:hidden fixed inset-0 z-30 bg-black/50" onClick={() => setOpen(false)} />
-      )}
+      {open && <div className="md:hidden fixed inset-0 z-30 bg-black/50" onClick={() => setOpen(false)} />}
 
-      <aside className={`md:hidden fixed top-0 right-0 z-40 h-full w-72 bg-slate-900 text-white flex flex-col transition-transform duration-300 ${
-        open ? 'translate-x-0' : 'translate-x-full'
-      }`} dir="rtl">
+      <aside className={`md:hidden fixed top-0 right-0 z-40 h-full w-72 bg-slate-900 text-white flex flex-col transition-transform duration-300 ${open ? 'translate-x-0' : 'translate-x-full'}`} dir="rtl">
         <NavContent />
       </aside>
 
