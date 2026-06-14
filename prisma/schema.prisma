@@ -78,20 +78,20 @@ enum SlotStatus {
 }
 
 model Permit {
-  id          String       @id @default(cuid())
-  permitNumber String      @unique @default(cuid())
-  userId      String
-  user        User         @relation(fields: [userId], references: [id])
-  vehicleId   String
-  vehicle     Vehicle      @relation(fields: [vehicleId], references: [id])
-  type        PermitType
-  status      PermitStatus @default(ACTIVE)
-  startDate   DateTime
-  endDate     DateTime
-  zoneAccess  String?
-  price       Float
-  createdAt   DateTime     @default(now())
-  payments    Payment[]
+  id           String       @id @default(cuid())
+  permitNumber String       @unique @default(cuid())
+  userId       String
+  user         User         @relation(fields: [userId], references: [id])
+  vehicleId    String
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id])
+  type         PermitType
+  status       PermitStatus @default(ACTIVE)
+  startDate    DateTime
+  endDate      DateTime
+  zoneAccess   String?
+  price        Float
+  createdAt    DateTime     @default(now())
+  payments     Payment[]
 }
 
 enum PermitType {
@@ -157,12 +157,12 @@ enum PaymentStatus {
 }
 
 model AccessLog {
-  id        String    @id @default(cuid())
+  id        String       @id @default(cuid())
   vehicleId String
-  vehicle   Vehicle   @relation(fields: [vehicleId], references: [id])
+  vehicle   Vehicle      @relation(fields: [vehicleId], references: [id])
   slotId    String?
   slot      ParkingSlot? @relation(fields: [slotId], references: [id])
-  entryTime DateTime  @default(now())
+  entryTime DateTime     @default(now())
   exitTime  DateTime?
-  method    String    @default("MANUAL")
+  method    String       @default("MANUAL")
 }
