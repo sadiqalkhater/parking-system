@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import sql from '@/lib/db'
 import { verifyToken } from '@/lib/auth'
 
 function getUser(req: NextRequest) {
@@ -12,35 +12,20 @@ function getUser(req: NextRequest) {
 export async function GET(req: NextRequest) {
   const user = getUser(req)
   if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 })
-  const permits = await prisma.permit.findMany({
-    where: user.role === 'ADMIN' || user.role === 'MANAGER' ? {} : { userId: user.id },
-    include: {
-      user: { select: { name: true, email: true } },
-      vehicle: { select: { plateNumber: true, brand: true, model: true } },
-    },
-    orderBy: { createdAt: 'desc' },
-  })
-  return NextResponse.json(permits)
+  const permits = user.role === 'ADMIN' || user.role === 'MANAGER'
+    ? await sql`SELECT p.*, u.name as "userName", u.email as "userEmail", v."plateNumber", v.brand FROM "Permit" p JOIN "User" u ON p."userId" = u.id JOIN "Vehicle" v ON p."vehicleId" = v.id ORDER BY p."createdAt" DESC`
+    : await sql`SELECT p.*, u.name as "userName", u.email as "userEmail", v."plateNumber", v.brand FROM "Permit" p JOIN "User" u ON p."userId" = u.id JOIN "Vehicle" v ON p."vehicleId" = v.id WHERE p."userId" = ${user.id} ORDER BY p."createdAt" DESC`
+  return NextResponse.json(permits.map(p => ({ ...p, user: { name: p.userName, email: p.userEmail }, vehicle: { plateNumber: p.plateNumber, brand: p.brand } })))
 }
 
 export async function POST(req: NextRequest) {
   const user = getUser(req)
   if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 })
   const { vehicleId, type, startDate, endDate, zoneAccess, price, userId } = await req.json()
-  const permit = await prisma.permit.create({
-    data: {
-      userId: userId || user.id,
-      vehicleId,
-      type,
-      startDate: new Date(startDate),
-      endDate: new Date(endDate),
-      zoneAccess,
-      price,
-    },
-    include: {
-      user: { select: { name: true, email: true } },
-      vehicle: { select: { plateNumber: true, brand: true } },
-    },
-  })
+  const [permit] = await sql`
+    INSERT INTO "Permit" (id, "permitNumber", "userId", "vehicleId", type, status, "startDate", "endDate", "zoneAccess", price, "createdAt")
+    VALUES (gen_random_uuid(), gen_random_uuid(), ${userId || user.id}, ${vehicleId}, ${type}, 'ACTIVE', ${startDate}, ${endDate}, ${zoneAccess || null}, ${price}, NOW())
+    RETURNING *
+  `
   return NextResponse.json(permit, { status: 201 })
 }

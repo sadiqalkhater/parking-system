@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import sql from '@/lib/db'
 import { verifyToken } from '@/lib/auth'
 
 function getUser(req: NextRequest) {
@@ -12,50 +12,22 @@ function getUser(req: NextRequest) {
 export async function GET(req: NextRequest) {
   const user = getUser(req)
   if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 })
-  const reservations = await prisma.reservation.findMany({
-    where: user.role === 'ADMIN' || user.role === 'MANAGER' ? {} : { userId: user.id },
-    include: {
-      user: { select: { name: true, email: true } },
-      vehicle: { select: { plateNumber: true, brand: true, model: true } },
-      slot: { include: { zone: true } },
-    },
-    orderBy: { createdAt: 'desc' },
-  })
-  return NextResponse.json(reservations)
+  const rows = user.role === 'ADMIN' || user.role === 'MANAGER'
+    ? await sql`SELECT r.*, u.name as "userName", v."plateNumber", v.brand, v.model, ps."slotNumber", pz.name as "zoneName" FROM "Reservation" r JOIN "User" u ON r."userId"=u.id JOIN "Vehicle" v ON r."vehicleId"=v.id JOIN "ParkingSlot" ps ON r."slotId"=ps.id JOIN "ParkingZone" pz ON ps."zoneId"=pz.id ORDER BY r."createdAt" DESC`
+    : await sql`SELECT r.*, u.name as "userName", v."plateNumber", v.brand, v.model, ps."slotNumber", pz.name as "zoneName" FROM "Reservation" r JOIN "User" u ON r."userId"=u.id JOIN "Vehicle" v ON r."vehicleId"=v.id JOIN "ParkingSlot" ps ON r."slotId"=ps.id JOIN "ParkingZone" pz ON ps."zoneId"=pz.id WHERE r."userId"=${user.id} ORDER BY r."createdAt" DESC`
+  return NextResponse.json(rows.map(r => ({ ...r, user: { name: r.userName }, vehicle: { plateNumber: r.plateNumber, brand: r.brand, model: r.model }, slot: { slotNumber: r.slotNumber, zone: { name: r.zoneName } } })))
 }
 
 export async function POST(req: NextRequest) {
   const user = getUser(req)
   if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 })
   const { vehicleId, slotId, startTime, endTime, totalPrice } = await req.json()
-
-  // Check for conflicts
-  const conflict = await prisma.reservation.findFirst({
-    where: {
-      slotId,
-      status: { in: ['PENDING', 'CONFIRMED'] },
-      OR: [
-        { startTime: { lte: new Date(startTime) }, endTime: { gte: new Date(startTime) } },
-        { startTime: { lte: new Date(endTime) }, endTime: { gte: new Date(endTime) } },
-      ],
-    },
-  })
+  const [conflict] = await sql`SELECT id FROM "Reservation" WHERE "slotId"=${slotId} AND status IN ('PENDING','CONFIRMED') AND ("startTime" <= ${startTime} AND "endTime" >= ${startTime})`
   if (conflict) return NextResponse.json({ error: 'الموقف محجوز في هذا الوقت' }, { status: 400 })
-
-  const reservation = await prisma.reservation.create({
-    data: {
-      userId: user.id,
-      vehicleId,
-      slotId,
-      startTime: new Date(startTime),
-      endTime: new Date(endTime),
-      totalPrice,
-      status: 'CONFIRMED',
-    },
-    include: {
-      slot: { include: { zone: true } },
-      vehicle: { select: { plateNumber: true } },
-    },
-  })
+  const [reservation] = await sql`
+    INSERT INTO "Reservation" (id, "userId", "vehicleId", "slotId", "startTime", "endTime", status, "totalPrice", "createdAt")
+    VALUES (gen_random_uuid(), ${user.id}, ${vehicleId}, ${slotId}, ${startTime}, ${endTime}, 'CONFIRMED', ${totalPrice}, NOW())
+    RETURNING *
+  `
   return NextResponse.json(reservation, { status: 201 })
 }

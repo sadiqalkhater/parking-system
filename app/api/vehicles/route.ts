@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import sql from '@/lib/db'
 import { verifyToken } from '@/lib/auth'
 
 function getUser(req: NextRequest) {
@@ -12,12 +12,10 @@ function getUser(req: NextRequest) {
 export async function GET(req: NextRequest) {
   const user = getUser(req)
   if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 })
-  const vehicles = await prisma.vehicle.findMany({
-    where: user.role === 'ADMIN' || user.role === 'MANAGER' ? {} : { userId: user.id },
-    include: { user: { select: { name: true, email: true } } },
-    orderBy: { createdAt: 'desc' },
-  })
-  return NextResponse.json(vehicles)
+  const vehicles = user.role === 'ADMIN' || user.role === 'MANAGER'
+    ? await sql`SELECT v.*, u.name as "userName", u.email as "userEmail" FROM "Vehicle" v JOIN "User" u ON v."userId" = u.id ORDER BY v."createdAt" DESC`
+    : await sql`SELECT v.*, u.name as "userName", u.email as "userEmail" FROM "Vehicle" v JOIN "User" u ON v."userId" = u.id WHERE v."userId" = ${user.id} ORDER BY v."createdAt" DESC`
+  return NextResponse.json(vehicles.map(v => ({ ...v, user: { name: v.userName, email: v.userEmail } })))
 }
 
 export async function POST(req: NextRequest) {
@@ -25,9 +23,11 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 })
   const { plateNumber, brand, model, color, userId } = await req.json()
   try {
-    const vehicle = await prisma.vehicle.create({
-      data: { plateNumber, brand, model, color, userId: userId || user.id },
-    })
+    const [vehicle] = await sql`
+      INSERT INTO "Vehicle" (id, "plateNumber", brand, model, color, "userId", "createdAt")
+      VALUES (gen_random_uuid(), ${plateNumber}, ${brand}, ${model}, ${color}, ${userId || user.id}, NOW())
+      RETURNING *
+    `
     return NextResponse.json(vehicle, { status: 201 })
   } catch {
     return NextResponse.json({ error: 'رقم اللوحة مستخدم مسبقاً' }, { status: 400 })

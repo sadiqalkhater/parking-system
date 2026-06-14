@@ -1,21 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import sql from '@/lib/db'
 import { hashPassword, generateToken } from '@/lib/auth'
 
 export async function POST(req: NextRequest) {
   try {
     const { name, email, password, phone, role } = await req.json()
-    const exists = await prisma.user.findUnique({ where: { email } })
+    const [exists] = await sql`SELECT id FROM "User" WHERE email = ${email}`
     if (exists) return NextResponse.json({ error: 'البريد الإلكتروني مستخدم مسبقاً' }, { status: 400 })
-
     const hashed = await hashPassword(password)
-    const user = await prisma.user.create({
-      data: { name, email, password: hashed, phone, role: role || 'USER' },
-    })
+    const [user] = await sql`
+      INSERT INTO "User" (id, name, email, password, phone, role, "createdAt", "updatedAt")
+      VALUES (gen_random_uuid(), ${name}, ${email}, ${hashed}, ${phone || null}, ${role || 'USER'}, NOW(), NOW())
+      RETURNING id, name, email, role, phone, "createdAt"
+    `
     const token = generateToken({ id: user.id, email: user.email, role: user.role })
-    const { password: _, ...userWithoutPassword } = user
-    return NextResponse.json({ token, user: userWithoutPassword }, { status: 201 })
-  } catch {
+    return NextResponse.json({ token, user }, { status: 201 })
+  } catch (e) {
     return NextResponse.json({ error: 'خطأ في الخادم' }, { status: 500 })
   }
 }
