@@ -25,7 +25,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex flex-col items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
         <div className="text-center mb-8">
           <div className="bg-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -40,7 +40,7 @@ export default function LoginPage() {
             <label className="block text-sm font-medium text-gray-700 mb-1.5">البريد الإلكتروني</label>
             <input
               type="email" value={email} onChange={e => setEmail(e.target.value)}
-              className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+              className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
               placeholder="example@email.com" required
             />
           </div>
@@ -49,7 +49,7 @@ export default function LoginPage() {
             <div className="relative">
               <input
                 type={showPass ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition pl-10"
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition pl-10"
                 placeholder="••••••••" required
               />
               <button type="button" onClick={() => setShowPass(!showPass)}
@@ -70,6 +70,13 @@ export default function LoginPage() {
           <p>🔴 مدير: admin@parking.com / admin123</p>
           <p>🔵 مستخدم: user@parking.com / user123</p>
         </div>
+      </div>
+
+      {/* Credit */}
+      <div className="mt-6 text-center">
+        <p className="text-slate-400 text-xs">تم التطوير بواسطة</p>
+        <p className="text-white text-sm font-medium mt-0.5">صادق الخاطر</p>
+        <p className="text-blue-400 text-xs">فكرتي للاستشارات</p>
       </div>
     </div>
   )

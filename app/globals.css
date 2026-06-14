@@ -12,15 +12,38 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Cairo', Arial, sans-serif;
+}
+
+/* Fix select and input text visibility */
+select,
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="date"],
+input[type="datetime-local"],
+textarea {
+  color: #1e293b !important;
+  background-color: #ffffff !important;
+}
+
+select option {
+  color: #1e293b !important;
+  background-color: #ffffff !important;
+}
+
+/* Placeholder text */
+input::placeholder,
+select::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Fix for empty/default select */
+select:invalid,
+select option[value=""] {
+  color: #94a3b8 !important;
 }
