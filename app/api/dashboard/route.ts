@@ -2,24 +2,40 @@ import { NextResponse } from 'next/server'
 import sql from '@/lib/db'
 
 export async function GET() {
-  const [[{ count: totalUsers }], [{ count: totalVehicles }], [{ count: totalPermits }], [{ count: activePermits }], [{ count: totalReservations }], [{ count: todayReservations }], [{ count: totalSlots }], [{ count: occupiedSlots }]] = await Promise.all([
+  const [[{ count: totalUsers }], [{ count: totalPermits }], [{ count: activePermits }], [{ count: expiredPermits }], [{ count: totalSlots }], [{ count: availableSlots }], [{ count: occupiedSlots }]] = await Promise.all([
     sql`SELECT COUNT(*)::int FROM "User"`,
-    sql`SELECT COUNT(*)::int FROM "Vehicle"`,
     sql`SELECT COUNT(*)::int FROM "Permit"`,
-    sql`SELECT COUNT(*)::int FROM "Permit" WHERE status='ACTIVE'`,
-    sql`SELECT COUNT(*)::int FROM "Reservation"`,
-    sql`SELECT COUNT(*)::int FROM "Reservation" WHERE "startTime" >= CURRENT_DATE AND status='CONFIRMED'`,
+    sql`SELECT COUNT(*)::int FROM "Permit" WHERE status='ACTIVE' AND "endDate" >= CURRENT_DATE`,
+    sql`SELECT COUNT(*)::int FROM "Permit" WHERE status='ACTIVE' AND "endDate" < CURRENT_DATE`,
     sql`SELECT COUNT(*)::int FROM "ParkingSlot"`,
+    sql`SELECT COUNT(*)::int FROM "ParkingSlot" WHERE status='AVAILABLE'`,
     sql`SELECT COUNT(*)::int FROM "ParkingSlot" WHERE status='OCCUPIED'`,
   ])
-  const recentReservations = await sql`
-    SELECT r.*, u.name as "userName", v."plateNumber", ps."slotNumber", pz.name as "zoneName"
-    FROM "Reservation" r JOIN "User" u ON r."userId"=u.id JOIN "Vehicle" v ON r."vehicleId"=v.id
-    JOIN "ParkingSlot" ps ON r."slotId"=ps.id JOIN "ParkingZone" pz ON ps."zoneId"=pz.id
-    ORDER BY r."createdAt" DESC LIMIT 5
+
+  const recentPermits = await sql`
+    SELECT p.id, p."permitNumber", p."beneficiaryName", p."plateNumber", 
+           p.type, p.status, p."endDate", p."parkingSlot", p.price,
+           u.name as "createdByName"
+    FROM "Permit" p
+    LEFT JOIN "User" u ON p."createdBy" = u.id
+    ORDER BY p."createdAt" DESC LIMIT 6
   `
+
+  const zoneStats = await sql`
+    SELECT pz.name, pz.type,
+      COUNT(ps.id)::int as total,
+      COUNT(ps.id) FILTER (WHERE ps.status='AVAILABLE')::int as available,
+      COUNT(ps.id) FILTER (WHERE ps.status='OCCUPIED')::int as occupied,
+      COUNT(ps.id) FILTER (WHERE ps.status='RESERVED')::int as reserved
+    FROM "ParkingZone" pz
+    LEFT JOIN "ParkingSlot" ps ON ps."zoneId" = pz.id
+    GROUP BY pz.id, pz.name, pz.type
+    ORDER BY pz.name
+  `
+
   return NextResponse.json({
-    stats: { totalUsers, totalVehicles, totalPermits, activePermits, totalReservations, todayReservations, totalSlots, occupiedSlots, availableSlots: totalSlots - occupiedSlots },
-    recentReservations: recentReservations.map(r => ({ ...r, user: { name: r.userName }, vehicle: { plateNumber: r.plateNumber }, slot: { slotNumber: r.slotNumber, zone: { name: r.zoneName } } })),
+    stats: { totalUsers, totalPermits, activePermits, expiredPermits, totalSlots, availableSlots, occupiedSlots },
+    recentPermits,
+    zoneStats,
   })
 }

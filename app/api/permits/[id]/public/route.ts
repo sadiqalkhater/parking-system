@@ -3,16 +3,14 @@ import sql from '@/lib/db'
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const [permit] = await sql`
-    SELECT p.id, p."permitNumber", p.type, p.status, p."startDate", p."endDate", 
-           p."zoneAccess", p.price,
-           u.name as "userName", u.email as "userEmail", u.phone,
-           v."plateNumber", v.brand, v.model, v.color
-    FROM "Permit" p
-    JOIN "User" u ON p."userId" = u.id
-    JOIN "Vehicle" v ON p."vehicleId" = v.id
-    WHERE p.id = ${id}
-  `
+  const [permit] = await sql`SELECT * FROM "Permit" WHERE id = ${id}`
   if (!permit) return NextResponse.json({ error: 'التصريح غير موجود' }, { status: 404 })
-  return NextResponse.json(permit)
+  return NextResponse.json({
+    ...permit,
+    userName: permit.beneficiaryName,
+    userPhone: permit.beneficiaryPhone,
+    brand: permit.vehicleBrand,
+    model: permit.vehicleModel,
+    color: permit.vehicleColor,
+  })
 }

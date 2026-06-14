@@ -10,13 +10,12 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const { name, description, totalSlots, floor, type } = await req.json()
   const [zone] = await sql`
-    INSERT INTO "ParkingZone" (id, name, description, "totalSlots", floor, type)
-    VALUES (gen_random_uuid(), ${name}, ${description || null}, ${totalSlots}, ${floor || null}, ${type})
+    INSERT INTO "ParkingZone" (name, description, "totalSlots", floor, type)
+    VALUES (${name}, ${description||null}, ${totalSlots}, ${floor||null}, ${type||'REGULAR'})
     RETURNING *
   `
-  const slotInserts = Array.from({ length: totalSlots }, (_, i) =>
-    sql`INSERT INTO "ParkingSlot" (id, "slotNumber", "zoneId", status) VALUES (gen_random_uuid(), ${`${name}-${String(i + 1).padStart(3, '0')}`}, ${zone.id}, 'AVAILABLE')`
-  )
-  await Promise.all(slotInserts)
+  for (let i = 1; i <= totalSlots; i++) {
+    await sql`INSERT INTO "ParkingSlot" ("slotNumber", "zoneId", status) VALUES (${`${name}-${String(i).padStart(3,'0')}`}, ${zone.id}, 'AVAILABLE')`
+  }
   return NextResponse.json(zone, { status: 201 })
 }

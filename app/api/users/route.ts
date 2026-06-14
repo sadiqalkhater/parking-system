@@ -7,10 +7,8 @@ export async function GET(req: NextRequest) {
   if (!auth) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 })
   try {
     const user = verifyToken(auth.replace('Bearer ', '')) as { role: string }
-    if (user.role !== 'ADMIN') return NextResponse.json({ error: 'غير مصرح' }, { status: 403 })
+    if (!['ADMIN','MANAGER'].includes(user.role)) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 })
     const users = await sql`SELECT id, name, email, role, phone, "createdAt" FROM "User" ORDER BY "createdAt" DESC`
     return NextResponse.json(users)
-  } catch {
-    return NextResponse.json({ error: 'غير مصرح' }, { status: 401 })
-  }
+  } catch { return NextResponse.json({ error: 'غير مصرح' }, { status: 401 }) }
 }

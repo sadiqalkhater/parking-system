@@ -12,20 +12,24 @@ function getUser(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const user = getUser(req)
   if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 })
-
   const { permitId, startDate, endDate, price } = await req.json()
-
   const [original] = await sql`SELECT * FROM "Permit" WHERE id = ${permitId}`
   if (!original) return NextResponse.json({ error: 'التصريح غير موجود' }, { status: 404 })
-
-  // Cancel old permit
-  await sql`UPDATE "Permit" SET status = 'CANCELLED' WHERE id = ${permitId}`
-
-  // Issue new permit
+  await sql`UPDATE "Permit" SET status='CANCELLED' WHERE id=${permitId}`
+  if (original.slotId) await sql`UPDATE "ParkingSlot" SET status='AVAILABLE' WHERE id=${original.slotId}`
+  const permitNumber = `P-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${String(Math.floor(Math.random()*9999)).padStart(4,'0')}`
   const [newPermit] = await sql`
-    INSERT INTO "Permit" (id, "permitNumber", "userId", "beneficiaryId", "vehicleId", type, status, "startDate", "endDate", "zoneAccess", price, "renewedFrom", "createdAt")
-    VALUES (gen_random_uuid(), gen_random_uuid(), ${original.userId}, ${original.beneficiaryId}, ${original.vehicleId}, ${original.type}, 'ACTIVE', ${startDate}, ${endDate}, ${original.zoneAccess}, ${price || original.price}, ${permitId}, NOW())
-    RETURNING *
+    INSERT INTO "Permit" (
+      "permitNumber", "createdBy", "beneficiaryName", "beneficiaryPhone", "beneficiaryNationalId", department,
+      "plateNumber", "vehicleBrand", "vehicleModel", "vehicleColor",
+      type, status, "startDate", "endDate", price, "zoneId", "slotId", "zoneAccess", "parkingSlot", "renewedFrom"
+    ) VALUES (
+      ${permitNumber}, ${user.id}, ${original.beneficiaryName}, ${original.beneficiaryPhone},
+      ${original.beneficiaryNationalId}, ${original.department},
+      ${original.plateNumber}, ${original.vehicleBrand}, ${original.vehicleModel}, ${original.vehicleColor},
+      ${original.type}, 'ACTIVE', ${startDate}, ${endDate}, ${price||original.price},
+      ${original.zoneId}, ${original.slotId}, ${original.zoneAccess}, ${original.parkingSlot}, ${permitId}
+    ) RETURNING *
   `
   return NextResponse.json(newPermit, { status: 201 })
 }
