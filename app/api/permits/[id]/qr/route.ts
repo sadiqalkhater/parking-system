@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import sql from '@/lib/db'
 import QRCode from 'qrcode'
+import { getAuthUser } from '@/lib/auth'
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if (!getAuthUser(req)) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 })
   const { id } = await params
-  const [permit] = await sql`SELECT * FROM "Permit" WHERE id = ${id}`
+  const [permit] = await sql`SELECT id, "permitNumber", status, "endDate" FROM "Permit" WHERE id = ${id}`
   if (!permit) return NextResponse.json({ error: 'التصريح غير موجود' }, { status: 404 })
   const baseUrl = req.headers.get('origin') || 'https://parking-system-iota-rust.vercel.app'
   const permitUrl = `${baseUrl}/permit/${id}`

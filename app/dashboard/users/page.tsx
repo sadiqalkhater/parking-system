@@ -29,7 +29,7 @@ export default function UsersPage() {
     e.preventDefault(); setLoading(true); setError('')
     const res = await fetch('/api/auth/register', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify(form),
     })
     if (res.ok) { setShowForm(false); setForm({ name: '', email: '', password: '', phone: '', role: 'USER' }); fetch_() }

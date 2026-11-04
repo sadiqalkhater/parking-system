@@ -69,7 +69,7 @@ export default function PermitsPage() {
   const fetch_ = () => {
     fetch('/api/permits/full', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json()).then(d => { if (Array.isArray(d)) setPermits(d) })
-    fetch('/api/parking-zones')
+    fetch('/api/parking-zones', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json()).then(d => { if (Array.isArray(d)) setZones(d) })
   }
   useEffect(() => { fetch_() }, [token])
