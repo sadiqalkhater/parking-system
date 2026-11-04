@@ -1,8 +1,28 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { timingSafeEqual } from 'crypto'
 import sql from '@/lib/db'
 import { hashPassword } from '@/lib/auth'
 
+// DESTRUCTIVE: drops and recreates every table with demo data.
+// Disabled unless ALLOW_DB_INIT=true AND the caller sends the INIT_SECRET in `x-init-secret`.
+// Never set ALLOW_DB_INIT in production.
+function isInitAllowed(req: NextRequest): boolean {
+  const secret = process.env.INIT_SECRET
+  const provided = req.headers.get('x-init-secret')
+  if (process.env.ALLOW_DB_INIT !== 'true' || !secret || !provided) return false
+  const a = Buffer.from(secret)
+  const b = Buffer.from(provided)
+  return a.length === b.length && timingSafeEqual(a, b)
+}
+
 export async function GET() {
+  return NextResponse.json({ error: 'Not found' }, { status: 404 })
+}
+
+export async function POST(req: NextRequest) {
+  if (!isInitAllowed(req)) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
   try {
     // Drop old tables and recreate clean
     await sql`DROP TABLE IF EXISTS "PermitV2" CASCADE`
@@ -243,6 +263,7 @@ export async function GET() {
       }
     })
   } catch (e: unknown) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    console.error('DB init failed', e)
+    return NextResponse.json({ error: 'خطأ في الخادم' }, { status: 500 })
   }
 }

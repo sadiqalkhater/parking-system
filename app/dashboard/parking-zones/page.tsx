@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { ParkingSquare, Plus } from 'lucide-react'
 import Badge from '@/components/ui/Badge'
+import { useAuth } from '@/context/AuthContext'
 
 interface Zone {
   id: string
@@ -21,19 +22,20 @@ const zoneTypes = [
 ]
 
 export default function ParkingZonesPage() {
+  const { token } = useAuth()
   const [zones, setZones] = useState<Zone[]>([])
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ name: '', description: '', totalSlots: '10', floor: '', type: 'REGULAR' })
   const [loading, setLoading] = useState(false)
 
-  const fetch_ = () => fetch('/api/parking-zones').then(r => r.json()).then(setZones)
-  useEffect(() => { fetch_() }, [])
+  const fetch_ = () => token && fetch('/api/parking-zones', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(setZones)
+  useEffect(() => { fetch_() }, [token])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setLoading(true)
     const res = await fetch('/api/parking-zones', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ ...form, totalSlots: parseInt(form.totalSlots) }),
     })
     if (res.ok) { setShowForm(false); fetch_() }

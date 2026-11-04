@@ -32,7 +32,7 @@ export default function ReservationsPage() {
   const fetch_ = () => {
     fetch('/api/reservations', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(setReservations)
     fetch('/api/vehicles', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(setVehicles)
-    fetch('/api/parking-zones').then(r => r.json()).then(setZones)
+    fetch('/api/parking-zones', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(setZones)
   }
   useEffect(() => { fetch_() }, [token])
 

@@ -1,7 +1,9 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import sql from '@/lib/db'
+import { getAuthUser } from '@/lib/auth'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  if (!getAuthUser(req)) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 })
   const [[{ count: totalUsers }], [{ count: totalPermits }], [{ count: activePermits }], [{ count: expiredPermits }], [{ count: totalSlots }], [{ count: availableSlots }], [{ count: occupiedSlots }]] = await Promise.all([
     sql`SELECT COUNT(*)::int FROM "User"`,
     sql`SELECT COUNT(*)::int FROM "Permit"`,

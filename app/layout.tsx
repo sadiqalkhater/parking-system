@@ -5,6 +5,8 @@ import { AuthProvider } from '@/context/AuthContext'
 export const metadata: Metadata = {
   title: 'نظام إدارة المواقف',
   description: 'نظام إدارة تصاريح وحجوزات السيارات',
+  // The application sits behind a login; public marketing pages live on the main website.
+  robots: { index: false, follow: false },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
